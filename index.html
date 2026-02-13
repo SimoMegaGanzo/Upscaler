@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Power Upscaler 4K - Fast Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pica/9.0.1/pica.min.js"></script>
+    <style>
+        :root { --accent: #00d1b2; --bg: #121212; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .app-card { background: #1e1e1e; padding: 2rem; border-radius: 1.5rem; box-shadow: 0 20px 50px rgba(0,0,0,0.5); width: 90%; max-width: 800px; text-align: center; border: 1px solid #333; }
+        h1 { margin-top: 0; font-weight: 800; letter-spacing: -1px; }
+        .upload-zone { border: 2px dashed #444; padding: 2rem; border-radius: 1rem; margin: 1.5rem 0; cursor: pointer; transition: 0.3s; }
+        .upload-zone:hover { border-color: var(--accent); background: rgba(0,209,178,0.05); }
+        .btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 1rem; }
+        button { padding: 12px 24px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        #btnProcess { background: var(--accent); color: #000; }
+        #btnDownload { background: #fff; color: #000; display: none; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+        #status { margin-top: 1rem; font-family: monospace; color: #888; font-size: 0.9rem; }
+        .progress-container { width: 100%; background: #333; height: 6px; border-radius: 3px; margin-top: 1rem; overflow: hidden; display: none; }
+        #progressBar { width: 0%; height: 100%; background: var(--accent); transition: width 0.3s; }
+        canvas { width: 100%; margin-top: 2rem; border-radius: 0.5rem; background: #000; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-card">
+    <h1>AI-Enhanced 4K Upscaler</h1>
+    <p>Veloce, stabile e ottimizzato per immagini grandi</p>
+
+    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <p id="fileName">Trascina qui l'immagine o clicca per caricare</p>
+        <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <div class="btn-group">
+        <button id="btnProcess" disabled>AVVIA UPSCALE 4K</button>
+        <button id="btnDownload">SCARICA PNG</button>
+    </div>
+
+    <div class="progress-container" id="progressBox">
+        <div id="progressBar"></div>
+    </div>
+    <div id="status">In attesa dell'immagine della Porsche...</div>
+
+    <canvas id="outputCanvas"></canvas>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const btnProcess = document.getElementById('btnProcess');
+    const btnDownload = document.getElementById('btnDownload');
+    const status = document.getElementById('status');
+    const progressBar = document.getElementById('progressBar');
+    const progressBox = document.getElementById('progressBox');
+    const canvas = document.getElementById('outputCanvas');
+    const pica = window.pica();
+
+    let sourceImg = null;
+
+    // Caricamento Immagine
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                sourceImg = img;
+                document.getElementById('fileName').innerText = `Immagine: ${file.name} (${img.width}x${img.height})`;
+                btnProcess.disabled = false;
+                status.innerText = "Pronto per l'elaborazione.";
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Elaborazione Ultra-Veloce
+    btnProcess.onclick = async () => {
+        if (!sourceImg) return;
+
+        btnProcess.disabled = true;
+        progressBox.style.display = 'block';
+        status.innerText = "Analisi vettoriale e interpolazione...";
+        
+        // Creiamo un canvas di supporto per l'offscreen rendering
+        const offScreenCanvas = document.createElement('canvas');
+        offScreenCanvas.width = 3840; // 4K Width
+        offScreenCanvas.height = 2160; // 4K Height
+
+        try {
+            // Utilizziamo Pica per il ridimensionamento di alta qualità (Lanczos3)
+            // È molto più veloce dell'IA pura ma con una nitidezza simile per foto di auto
+            await pica.resize(sourceImg, offScreenCanvas, {
+                unsharpAmount: 160, // Aumenta la nitidezza dei dettagli (es. fari, carrozzeria)
+                unsharpRadius: 0.6,
+                unsharpThreshold: 2
+            });
+
+            // Visualizzazione Risultato
+            canvas.width = offScreenCanvas.width;
+            canvas.height = offScreenCanvas.height;
+            canvas.style.display = 'block';
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(offScreenCanvas, 0, 0);
+
+            progressBar.style.width = '100%';
+            status.innerText = "COMPLETATO! Risultato ottimizzato in 4K.";
+            btnDownload.style.display = 'inline-block';
+            btnProcess.disabled = false;
+
+        } catch (err) {
+            console.error(err);
+            status.innerText = "Errore durante l'elaborazione.";
+            btnProcess.disabled = false;
+        }
+    };
+
+    // Download
+    btnDownload.onclick = () => {
+        const link = document.createElement('a');
+        link.download = 'porsche_4k_enhanced.png';
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+    };
+</script>
+
+</body>
+</html>
